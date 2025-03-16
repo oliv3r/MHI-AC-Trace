@@ -288,6 +288,8 @@ The two byte checksum is calculated by the sum of the signature bytes plus the d
     CBH = checksum[15:8]
     CBL = checksum[7:0]
 
+The extended frame continues after last databyte at position 17, skips the two previous checksum bytes and only the low byte is stored in CBL2 at position 32. In other words, bytes 0 - 17, 20 - 31.
+
 
 ## Settings
 For writing MHI-AC - depending on the function - a specific MISO set-bit is used:
