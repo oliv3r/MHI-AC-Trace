@@ -23,7 +23,7 @@ T<sub>Bit</sub> Time for one bit
 The following timing is used by SRK xx ZS-S
 
 T<sub>Frame</sub>|T<sub>FramePause</sub>|T<sub>Byte</sub>|T<sub>BytePause</sub>|T<sub>Bit</sub>|T<sub>Clock</sub>
----|---|---|---|---|
+---|---|---|---|---|---|
 10ms|40ms|250µs|250µs|31.25µs|32kHz
 
 Other models could have different timing
@@ -80,7 +80,7 @@ In the description we differ between
 
 For the testing and evaluation of the protocol the remote controls [MH-AC-WIFI-1](https://www.intesisbox.com/de/mitsubishi-heavy-ascii-wifi-ac-mh-ac-wmp-1/gateway/) and [RC-E5](https://www.mhi-mth.co.jp/en/products/pdf/pjz012a087b_german.pdf) were used.
 
-## Signature
+## Header
 The MOSI frame starts with a header of 3 bytes. First the version byte, indicating whether a standard (0x6C) or extended (0x6D) frame follows. The second and third signature bytes are 0x80, 0x04. See [Mitsubishi AC models](https://github.com/absalom-muc/MHI-AC-Ctrl/issues/6#issue-558530669) for intial discussion on the version byte.
 The MISO frame replies with 0xA9 to indicate it understands only Standard frames, or 0xAA for Extended frames. The remaining signature bytes are 0x00, 0x07. 
 
