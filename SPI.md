@@ -298,7 +298,7 @@ function | set-bit
 ---- | ----
 Power|DB0[1]
 Mode|DB0[5]
-Fan|DB1[3] and DB6[4] for Fan=4
+Fan|DB1[3]
 Vanes|DB0[7] for swing and DB1[7] for up/down position
 Tsetpoint|DB2[7]
 
