@@ -1,6 +1,6 @@
 # SPI Bus
 ## Interface
-The AC is the SPI master. MHI uses the signals SCK, MOSI and MISO. A slave select signal is not supported.
+The AC is the SPI master. MHI uses the signals SCK, MOSI and MISO. A slave select signal is not supported, and must be determined from the clock.
 
 Name | Function |input/output
 ------------ | ------------- |--------------
@@ -18,22 +18,22 @@ T<sub>Byte</sub> Time for one byte
 T<sub>BytePause</sub> Time between two bytes   
 T<sub>Bit</sub> Time for one bit   
 
-![grafik](https://user-images.githubusercontent.com/23119513/144753997-48354b1c-e728-49bf-9f56-ea8085d8a741.png)
+![timing diagram](https://user-images.githubusercontent.com/23119513/144753997-48354b1c-e728-49bf-9f56-ea8085d8a741.png)
 
 The following timing is used by SRK xx ZS-S
 
-T<sub>Frame</sub>|T<sub>FramePause</sub>|T<sub>Byte</sub>|T<sub>BytePause</sub>|T<sub>Bit</sub>
+T<sub>Frame</sub>|T<sub>FramePause</sub>|T<sub>Byte</sub>|T<sub>BytePause</sub>|T<sub>Bit</sub>|T<sub>Clock</sub>
 ---|---|---|---|---|
-10ms|40ms|250µs|250µs|31.25µs
+10ms|40ms|250µs|250µs|31.25µs|32kHz
 
 Other models could have different timing
 
-A frame consists of 20 bytes. A frame consumes 20x2x250µs=10ms. Between 2 frames is a pause of 40ms. 20 frames per second will be transmitted. The following oscilloscope screenshot shows 3 bytes:
+There are two kinds of frames currently known. Standard frames, which consists of 20 bytes and consumes 20x2x250µs=10ms, and extended frames, which add 13 additional bytes after a short, approximatly 2ms, pause. Between 2 standard frames is a pause of 40ms. For Standard frames, about 20 frames per second will be transmitted. The following oscilloscope screenshot shows 3 bytes:
 ![grafik](https://user-images.githubusercontent.com/23119513/144753799-f5fc59df-1925-4a60-9a0c-f6675fd9c838.png)
 
 Yellow: SCK; Purple: MOSI
 # SPI Frame
-A frame starts with three signature bytes, followed by 15 data bytes and 2 bytes for a checksum. The following table shows the structure of a frame.
+A frame starts with three signature bytes. After the header 15 data bytes and 2 bytes for a checksum follow. In the case of an extended frame, 12 further data bytes follow ending with only a single checusm byte. The following table shows the structure of a frame.
 In the ESP8266 program code and in the description mainly the short names are used.
 
 raw byte # | long name | short name
@@ -58,6 +58,20 @@ raw byte # | long name | short name
 17|data byte 14| DB14
 18|checksum byte high| CBH
 19|checksum byte low| CBL
+20|data byte 15| DB15
+21|data byte 16| DB16
+22|data byte 17| DB17
+23|data byte 18| DB18
+24|data byte 19| DB19
+25|data byte 20| DB20
+26|data byte 21| DB21
+27|data byte 22| DB22
+28|data byte 23| DB23
+29|data byte 24| DB24
+30|data byte 25| DB25
+31|data byte 26| DB26
+32|checksum byte low| CBL2
+
 
 In the description we differ between
 
@@ -67,8 +81,8 @@ In the description we differ between
 For the testing and evaluation of the protocol the remote controls [MH-AC-WIFI-1](https://www.intesisbox.com/de/mitsubishi-heavy-ascii-wifi-ac-mh-ac-wmp-1/gateway/) and [RC-E5](https://www.mhi-mth.co.jp/en/products/pdf/pjz012a087b_german.pdf) were used.
 
 ## Signature
-The MOSI signature bytes indicate the start of a frame with the 3 bytes 0x6c, 0x80, 0x04. The first signature byte varies with the AC. For some [Mitsubishi AC models](https://github.com/absalom-muc/MHI-AC-Ctrl/issues/6#issue-558530669) it is 0x6d.
-The MISO frame has the signature 0xa9, 0x00, 0x07. 
+The MOSI frame starts with a header of 3 bytes. First the version byte, indicating whether a standard (0x6C) or extended (0x6D) frame follows. The second and third signature bytes are 0x80, 0x04. See [Mitsubishi AC models](https://github.com/absalom-muc/MHI-AC-Ctrl/issues/6#issue-558530669) for intial discussion on the version byte.
+The MISO frame replies with 0xA9 to indicate it understands only Standard frames, or 0xAA for Extended frames. The remaining signature bytes are 0x00, 0x07. 
 
 ## Data
 The following clauses describe the MOSI/MISO decoding for power, mode, fan, vanes, temperature setpoint and room temperature.
@@ -134,20 +148,20 @@ The mode is coded in MOSI DB0[4:2].
 The same coding is used for setting the Mode. The set bit in the MISO frame is DB0[5].
 
 ### Fan
-The fan level is coded in MOSI DB1[1:0] and in DB6[6].
+The fan level is coded in MOSI DB1[2:0].
+By default however only fan speeds 1, 2 and 3 are reported. The AC needs to be sent a message with DB1[2] set to acknowledge to the AC extended Fan modes are understood.
 <table style="width: 273px; height: 68px;">
 <thead>
 <tr>
 <td style="width: 66.9667px;" colspan="2"><strong>DB1</strong></td>
-<td style="width: 66.9667px;"><strong>DB6</strong></td>
 <td style="width: 66.9667px;"><strong>Function</strong></td>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="width: 66.9667px;">bit 1</td>
-<td style="width: 71.4333px;">bit 0</td>
-<td style="width: 66.9667px;">bit 6</td>
+<td style="width: 66.9667px;">bit 2</td>
+<td style="width: 71.4333px;">bit 1</td>
+<td style="width: 66.9667px;">bit 0</td>
 <td style="width: 66.9667px;">Fan</td>
 </tr>
 <tr>
@@ -169,41 +183,21 @@ The fan level is coded in MOSI DB1[1:0] and in DB6[6].
 <td style="width: 66.9667px;">3</td>
 </tr>
 <tr>
-<td style="width: 66.9667px;">x</td>
-<td style="width: 71.4333px;">x</td>
 <td style="width: 66.9667px;">1</td>
-<td style="width: 66.9667px;">4</td>
-</tr>
-</tbody>
-</table>
-
-The same coding is used for setting Fan=1..3. The set bit in the MISO frame is DB1[3].
-But for setting Fan=4 DB6[4], not DB6[6] of the MISO frame is used:
-
-<table style="width: 273px; height: 68px;">
-<thead>
-<tr>
-<td style="width: 66.9667px;" colspan="2"><strong>DB1</strong></td>
-<td style="width: 66.9667px;"><strong>DB6</strong></td>
-<td style="width: 66.9667px;"><strong>Function</strong></td>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="width: 66.9667px;">bit 1</td>
-<td style="width: 71.4333px;">bit 0</td>
-<td style="width: 66.9667px;">bit 4</td>
-<td style="width: 66.9667px;">Fan</td>
-</tr>
-<tr>
-<td style="width: 66.9667px;">0</td>
 <td style="width: 71.4333px;">1</td>
 <td style="width: 66.9667px;">0</td>
 <td style="width: 66.9667px;">4</td>
 </tr>
+<tr>
+<td style="width: 66.9667px;">1</td>
+<td style="width: 71.4333px;">1</td>
+<td style="width: 66.9667px;">1</td>
+<td style="width: 66.9667px;">auto</td>
+</tr>
 </tbody>
 </table>
-note: With the Infrared-remote control (IR-RC) you can select "auto" for the fan. But this is not reflected by the SPI payload.    
+
+The same coding is used for setting the Fan. The set bit in the MISO frame is DB1[3].
 
 The following table shows the mapping between Fan and IUFANSPEED (opdata) and the IR-RC for Mode=Fan:
 Fan | IUFANSPEED | IR-RC
